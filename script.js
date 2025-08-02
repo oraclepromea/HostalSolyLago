@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Make currentSlide function globally available for onclick handlers
 window.currentSlide = currentSlide;
 
-// Language Translation System
+// Language Translation System - FIXED VERSION
 const translations = {
     es: {
         // Navigation
@@ -417,7 +417,7 @@ const translations = {
         'All rights reserved.': 'Todos los derechos reservados.'
     },
     en: {
-        // Navigation
+        // Navigation  
         'Home': 'Home',
         'Habitaciones': 'Rooms',
         'Servicios': 'Services', 
@@ -537,7 +537,7 @@ const translations = {
 
 let currentLanguage = 'es';
 
-// Language switching functionality
+// Enhanced language switching functionality
 function switchLanguage(lang) {
     currentLanguage = lang;
     
@@ -554,81 +554,104 @@ function switchLanguage(lang) {
     
     // Update all text elements
     updatePageContent(lang);
+    
+    // Store language preference
+    localStorage.setItem('preferredLanguage', lang);
 }
 
 function updatePageContent(lang) {
-    const elements = document.querySelectorAll('[data-translate], h1, h2, h3, h4, p, span, a, li');
+    // Get all translatable elements
+    const translatableElements = document.querySelectorAll('h1, h2, h3, h4, p, span:not(.flag), a:not([href*="tel:"]):not([href*="mailto:"]), li');
     
-    elements.forEach(element => {
-        const key = element.dataset.translate || element.textContent.trim();
+    translatableElements.forEach(element => {
+        // Skip if element is inside a script tag or other non-content areas
+        if (element.closest('script') || element.closest('style') || element.closest('.flag')) {
+            return;
+        }
         
-        if (translations[lang] && translations[lang][key]) {
-            if (element.tagName === 'A' && element.href.includes('whatsapp')) {
-                // Handle WhatsApp links specially to preserve functionality
-                const newText = translations[lang][key];
-                element.textContent = newText;
-                
-                // Update WhatsApp message text
-                if (lang === 'en') {
-                    element.href = element.href.replace(
-                        'Hola%2C%20me%20interesa',
-                        'Hello%2C%20I%20am%20interested%20in'
-                    ).replace(
-                        'información%20sobre%20Hostal%20Sol%20y%20Lago',
-                        'information%20about%20Hostal%20Sol%20y%20Lago'
-                    ).replace(
-                        'reservar%20una%20habitación',
-                        'booking%20a%20room'
-                    ).replace(
-                        'hacer%20una%20reserva%20en',
-                        'making%20a%20reservation%20at'
-                    );
-                } else {
-                    // Restore Spanish WhatsApp messages
-                    element.href = element.href.replace(
-                        'Hello%2C%20I%20am%20interested%20in',
-                        'Hola%2C%20me%20interesa'
-                    ).replace(
-                        'information%20about%20Hostal%20Sol%20y%20Lago',
-                        'información%20sobre%20Hostal%20Sol%20y%20Lago'
-                    ).replace(
-                        'booking%20a%20room',
-                        'reservar%20una%20habitación'
-                    ).replace(
-                        'making%20a%20reservation%20at',
-                        'hacer%20una%20reserva%20en'
-                    );
-                }
-            } else {
-                element.textContent = translations[lang][key];
-            }
-            
-            // Store original text for translation back
-            if (!element.dataset.translate) {
-                element.dataset.translate = key;
-            }
+        // Get the text content, trimmed
+        const currentText = element.textContent.trim();
+        
+        // Skip empty elements or elements with only numbers/symbols
+        if (!currentText || /^[\d\s\-\+\(\)]+$/.test(currentText)) {
+            return;
+        }
+        
+        // Handle WhatsApp links specially
+        if (element.tagName === 'A' && element.href.includes('whatsapp')) {
+            updateWhatsAppLink(element, lang, currentText);
+            return;
+        }
+        
+        // Look for translation
+        if (translations[lang] && translations[lang][currentText]) {
+            element.textContent = translations[lang][currentText];
         }
     });
     
     // Update meta tags
+    updateMetaTags(lang);
+}
+
+function updateWhatsAppLink(element, lang, currentText) {
+    // Update button text
+    if (translations[lang] && translations[lang][currentText]) {
+        element.textContent = translations[lang][currentText];
+    }
+    
+    // Update WhatsApp message URL
+    let href = element.href;
+    
     if (lang === 'en') {
-        document.title = 'Hostal Sol y Lago - Copacabana, Bolivia | Lake Titicaca View';
-        document.querySelector('meta[name="description"]').content = 'Hostal Sol y Lago in Copacabana, Bolivia. Rooms with Lake Titicaca view, breakfast included, free WiFi. Reservations via WhatsApp +591 73064877';
+        href = href.replace(/Hola%2C%20me%20interesa/g, 'Hello%2C%20I%20am%20interested%20in')
+                  .replace(/información%20sobre/g, 'information%20about')
+                  .replace(/reservar%20una%20habitación/g, 'booking%20a%20room')
+                  .replace(/hacer%20una%20reserva/g, 'making%20a%20reservation');
     } else {
-        document.title = 'Hostal Sol y Lago - Copacabana, Bolivia | Vista al Lago Titicaca';
-        document.querySelector('meta[name="description"]').content = 'Hostal Sol y Lago en Copacabana, Bolivia. Habitaciones con vista al Lago Titicaca, desayuno incluido, WiFi gratuito. Reservas por WhatsApp +591 73064877';
+        href = href.replace(/Hello%2C%20I%20am%20interested%20in/g, 'Hola%2C%20me%20interesa')
+                  .replace(/information%20about/g, 'información%20sobre')
+                  .replace(/booking%20a%20room/g, 'reservar%20una%20habitación')
+                  .replace(/making%20a%20reservation/g, 'hacer%20una%20reserva');
+    }
+    
+    element.href = href;
+}
+
+function updateMetaTags(lang) {
+    const title = document.querySelector('title');
+    const description = document.querySelector('meta[name="description"]');
+    
+    if (lang === 'en') {
+        if (title) title.textContent = 'Hostal Sol y Lago - Copacabana, Bolivia | Lake Titicaca View';
+        if (description) description.content = 'Hostal Sol y Lago in Copacabana, Bolivia. Rooms with Lake Titicaca view, breakfast included, free WiFi. Reservations via WhatsApp +591 73064877';
+    } else {
+        if (title) title.textContent = 'Hostal Sol y Lago - Copacabana, Bolivia | Vista al Lago Titicaca';
+        if (description) description.content = 'Hostal Sol y Lago en Copacabana, Bolivia. Habitaciones con vista al Lago Titicaca, desayuno incluido, WiFi gratuito. Reservas por WhatsApp +591 73064877';
     }
 }
 
-// Initialize language toggle
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize language toggle system
+function initializeLanguageSystem() {
     // Add click listeners to language buttons
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            switchLanguage(btn.dataset.lang);
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetLang = btn.dataset.lang;
+            if (targetLang && targetLang !== currentLanguage) {
+                switchLanguage(targetLang);
+            }
         });
     });
     
-    // Set initial language (Spanish)
-    switchLanguage('es');
+    // Check for saved language preference or default to Spanish
+    const savedLang = localStorage.getItem('preferredLanguage') || 'es';
+    switchLanguage(savedLang);
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait a bit for all content to load
+    setTimeout(() => {
+        initializeLanguageSystem();
+    }, 100);
 });
